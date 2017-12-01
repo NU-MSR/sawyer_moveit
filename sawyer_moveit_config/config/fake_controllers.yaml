@@ -1,5 +1,6 @@
 controller_list:
   - name: fake_right_arm_controller
+    type: interpolate
     joints:
       - right_j0
       - right_j1

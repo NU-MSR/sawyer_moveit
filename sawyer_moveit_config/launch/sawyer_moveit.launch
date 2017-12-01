@@ -3,6 +3,8 @@
   <arg name="config" default="true"/>
   <arg name="rviz_config" default="$(find sawyer_moveit_config)/launch/moveit.rviz" />
 
+  <arg name="fake" default="false" doc="Should we use fake controllers or real controllers"/>
+  
   <!-- By default, we do not start a database (it can be large) -->
   <arg name="db" default="false" />
   <!-- By default, we are not in debug mode -->
@@ -13,7 +15,7 @@
   <!-- Add controller box collision shape to check for link collisions if set to true-->
   <arg name="controller_box" default="true"/>
   <!-- Left and electric gripper arg. Set to true to check for collisions for their links -->
-  <arg name="electric_gripper" default="false"/>
+  <arg name="electric_gripper" default="true"/>
   <!-- Set the kinematic tip for the right_arm move_group -->
   <arg name="tip_name"     if="$(arg electric_gripper)" default="right_gripper"/>
   <arg name="tip_name" unless="$(arg electric_gripper)" default="right_hand"/>
@@ -33,7 +35,7 @@
     <arg name="xtion" value="$(arg xtion)" />
     <arg name="camera_link_pose" default="$(arg camera_link_pose)"/>
     <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution" value="false"/>
+    <arg name="fake_execution" value="$(arg fake)"/>
     <arg name="info" value="true"/>
     <arg name="debug" value="$(arg debug)"/>
   </include>
@@ -47,4 +49,16 @@
   <!-- If database loading was enabled, start mongodb as well -->
   <include file="$(find sawyer_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)"/>
 
+  <group if="$(arg fake)" >
+	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <param name="/use_gui" value="false"/>
+      <rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>
+  	  <remap from="/joint_states" to="/robot/joint_states" />
+	</node>
+	<node name="robot_state_publisher" type="robot_state_publisher" pkg="robot_state_publisher">
+	  <remap from="/joint_states" to="/robot/joint_states" />
+	</node>
+  </group>
+
+  
 </launch>
