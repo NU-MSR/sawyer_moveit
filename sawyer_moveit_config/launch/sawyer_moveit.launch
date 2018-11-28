@@ -2,6 +2,7 @@
 <launch>
   <arg name="config" default="true"/>
   <arg name="rviz_config" default="$(find sawyer_moveit_config)/launch/moveit.rviz" />
+  <arg name="fake" default="false" doc="Should we use fake controllers or real controllers"/>
 
   <!-- By default, we do not start a database (it can be large) -->
   <arg name="db" default="false" />
@@ -33,7 +34,7 @@
     <arg name="xtion" value="$(arg xtion)" />
     <arg name="camera_link_pose" default="$(arg camera_link_pose)"/>
     <arg name="allow_trajectory_execution" value="true"/>
-    <arg name="fake_execution" value="false"/>
+    <arg name="fake_execution" value="$(arg fake)"/>
     <arg name="info" value="true"/>
     <arg name="debug" value="$(arg debug)"/>
   </include>
@@ -47,4 +48,23 @@
   <!-- If database loading was enabled, start mongodb as well -->
   <include file="$(find sawyer_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)"/>
 
+
+  <!-- load JSP and RSP if we are faking the motion -->
+  <group if="$(arg fake)" >
+	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <param name="/use_gui" value="false"/>
+      <rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>
+  	  <remap from="/joint_states" to="/robot/joint_states" />
+	</node>
+	<node name="robot_state_publisher" type="robot_state_publisher" pkg="robot_state_publisher">
+	  <remap from="/joint_states" to="/robot/joint_states" />
+	</node>
+  </group>
+
+  <!-- Relay /robot/joint_states topic to /joint_states... seems there may be a
+       bug or a non-documented change in the MoveGroupCommander Python interface
+       since Indigo. It seems that there is an un-remappable subscription to
+       joint_states somewhere in there. This is a hack, but appears to work for now. -->
+  <node name="js_relay" pkg="topic_tools" type="relay" args="/robot/joint_states /joint_states" />
+  
 </launch>
