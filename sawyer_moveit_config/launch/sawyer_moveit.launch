@@ -49,22 +49,21 @@
   <include file="$(find sawyer_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)"/>
 
 
-  <!-- load JSP and RSP if we are faking the motion -->
+  <!-- load JSP and RSP if we are faking the motion, and publish on the normal -->
+  <!-- =/robot/joint_states= topic that the real robot would use -->
   <group if="$(arg fake)" >
-	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-      <param name="/use_gui" value="false"/>
-      <rosparam param="/source_list">[/move_group/fake_controller_joint_states]</rosparam>
+	<node name="jsp_fake_js_relay" pkg="joint_state_publisher" type="joint_state_publisher">
+      <rosparam param="source_list">[/move_group/fake_controller_joint_states]</rosparam>
   	  <remap from="/joint_states" to="/robot/joint_states" />
 	</node>
-	<node name="robot_state_publisher" type="robot_state_publisher" pkg="robot_state_publisher">
-	  <remap from="/joint_states" to="/robot/joint_states" />
-	</node>
+	<node name="robot_state_publisher" type="robot_state_publisher" pkg="robot_state_publisher" />
   </group>
 
-  <!-- Relay /robot/joint_states topic to /joint_states... seems there may be a
-       bug or a non-documented change in the MoveGroupCommander Python interface
-       since Indigo. It seems that there is an un-remappable subscription to
-       joint_states somewhere in there. This is a hack, but appears to work for now. -->
-  <node name="js_relay" pkg="topic_tools" type="relay" args="/robot/joint_states /joint_states" />
-  
+  <!-- I've encountered enough issues with the /robot/joint_states topic, that I -->
+  <!-- think it's okay to turn use the JSP to publish on the normal /joint_states -->
+  <!-- topic by default. -->
+  <node name="jsp_relay_and_assembler" pkg="joint_state_publisher" type="joint_state_publisher">
+    <rosparam param="source_list">[/robot/joint_states]</rosparam>
+  </node>
+
 </launch>
