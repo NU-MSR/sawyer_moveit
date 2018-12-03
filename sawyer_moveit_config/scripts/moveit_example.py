@@ -1,17 +1,8 @@
 #!/usr/bin/env python
 import rospy
-import rospkg
 from geometry_msgs.msg import PoseStamped
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import Quaternion
-from sensor_msgs.msg import JointState
 from std_srvs.srv import Empty, EmptyRequest, EmptyResponse
-import tf.transformations as tr
 
-# Intera imports
-import intera_interface
-from intera_interface import CHECK_VERSION
-from intera_core_msgs.msg import DigitalIOState
 # moveit stuff:
 import moveit_commander
 import moveit_msgs.msg
@@ -37,12 +28,14 @@ class MoveItCollisionTest( object ):
         self.robot = moveit_commander.RobotCommander()
         self.right_arm_group = moveit_commander.MoveGroupCommander("right_arm")
 
+        # let's give a small delay to ensure that we have time for all
+        # publishers and subscribers to be created
         rospy.sleep(3.0)
 
         # let's add world collision objects:
         self.world_collisions()
 
-        # now we can plan and go:
+        # now we can set some planning and execution parameters
         self.right_arm_group.set_goal_position_tolerance(0.01)
         self.right_arm_group.set_goal_orientation_tolerance(0.01)
         self.right_arm_group.set_planning_time(5.0)
@@ -80,7 +73,9 @@ class MoveItCollisionTest( object ):
         if not good:
             return
         else:
-            self.right_arm_group.set_joint_value_target(qrand)
+            # even though we now have a "good" IK solution, let's go ahead and
+            # plan in Cartesian space just as a demo:
+            self.right_arm_group.set_pose_target(pstamped)
             self.right_arm_group.plan()
             self.right_arm_group.go()
         return
@@ -92,7 +87,7 @@ class MoveItCollisionTest( object ):
         req.robot_state.joint_state.name = self.right_arm_group.get_active_joints()
         req.robot_state.joint_state.position = q
         resp = self.check_client(req)
-        print "Is q valid?", resp.valid
+        rospy.loginfo("Is q valid? %s", resp.valid)
         return resp.valid
 
     
@@ -107,8 +102,6 @@ class MoveItCollisionTest( object ):
         req.ik_request.pose_stamped = pstamped
         req.ik_request.attempts = 5
         resp = self.ik_client(req)
-        print "Error = ", resp.error_code
-        print "Solution = ", resp.solution.joint_state.position,"\r"
         q = np.zeros(len(self.right_arm_group.get_active_joints()))
         if resp.error_code.val == moveit_msgs.msg.MoveItErrorCodes.SUCCESS:
             sol = {}
@@ -119,6 +112,7 @@ class MoveItCollisionTest( object ):
             rospy.loginfo("Found IK solution! q = %s", str(q.tolist()))
             return True, q
         else:
+            rospy.logerr( "Could not solve IK... Error code = %d", resp.error_code)
             return False, q
 
 
@@ -177,7 +171,9 @@ class MoveItCollisionTest( object ):
         # If we have a complete plan, execute the trajectory 
         if fraction == 1.0: 
             rospy.loginfo("Path computed successfully. Moving the arm.") 
-            self.right_arm_group.execute(plan) 
+            self.right_arm_group.execute(plan)
+        else:
+            rospy.logerr("Could not find valid cartesian path for circle")
         return EmptyResponse()
 
 
