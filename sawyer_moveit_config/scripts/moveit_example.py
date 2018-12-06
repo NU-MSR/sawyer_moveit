@@ -112,7 +112,7 @@ class MoveItCollisionTest( object ):
             rospy.loginfo("Found IK solution! q = %s", str(q.tolist()))
             return True, q
         else:
-            rospy.logerr( "Could not solve IK... Error code = %d", resp.error_code)
+            rospy.logerr( "Could not solve IK... Error code = %d", resp.error_code.val)
             return False, q
 
 
